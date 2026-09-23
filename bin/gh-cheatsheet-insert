@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Insert text into the focused application by holding it on the clipboard and
+# sending Shift+Insert, which terminals and most GUI apps treat as paste.
+
+text="${1:-}"
+copy_pid=""
+
+[[ -n $text ]] || exit
+
+printf '%s' "$text" | wl-copy --type text/plain --sensitive --foreground &
+copy_pid=$!
+
+sleep 0.15
+wtype -M shift -k Insert -m shift 2>/dev/null || true
+sleep 0.2
+
+kill "$copy_pid" 2>/dev/null || true

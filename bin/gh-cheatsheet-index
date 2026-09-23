@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Build a categorized index of GitHub CLI commands from gh's own help output.
+# Categories follow the gh manual (https://cli.github.com/manual/gh), which
+# uses the same section headers `gh --help` prints.
+#
+# Usage: gh-cheatsheet-index [--refresh] [--print]
+#   --refresh  rebuild the cached index
+#   --print    print a readable table instead of JSON
+
+set -euo pipefail
+
+PLUGIN_ID="io.github.bkbatchelor.omarchy-github-cli-cheatsheet"
+
+# The shell's environment may not include user-level installs (mise, ~/.local/bin).
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+export GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 NO_COLOR=1
+
+refresh=false
+print=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --refresh) refresh=true ;;
+    --print|-p) print=true ;;
+    *) echo "Usage: gh-cheatsheet-index [--refresh] [--print]" >&2; exit 1 ;;
+  esac
+done
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo '{"error":"gh not found"}'
+  exit 0
+fi
+
+# Print "<SECTION>\t<name>\t<description>" for every entry under a *COMMANDS header.
+parse_commands() {
+  awk '
+    /^[A-Z][A-Z ]*COMMANDS$/ { section = $0; next }
+    /^[A-Z]/                 { section = ""; next }
+    section != "" && match($0, /^  ([A-Za-z0-9][A-Za-z0-9_-]*):[ \t]+(.*)$/, m) {
+      printf "%s\t%s\t%s\n", section, m[1], m[2]
+    }
+  '
+}
+
+category_name() {
+  case "$1" in
+    "CORE COMMANDS") echo "Core" ;;
+    "GITHUB ACTIONS COMMANDS") echo "GitHub Actions" ;;
+    "ALIAS COMMANDS") echo "Alias" ;;
+    "ADDITIONAL COMMANDS") echo "Additional" ;;
+    "EXTENSION COMMANDS") echo "Extension" ;;
+    *) echo "" ;;
+  esac
+}
+
+build_index() {
+  local section name description category subsection subname subdescription found
+
+  while IFS=$'\t' read -r section name description; do
+    category=$(category_name "$section")
+    [[ -n $category ]] || continue
+
+    found=false
+
+    if [[ $category != "Alias" ]]; then
+      while IFS=$'\t' read -r subsection subname subdescription; do
+        found=true
+        printf '%s\t%s\t%s\n' "$category" "gh $name $subname" "$subdescription"
+      done < <(gh "$name" --help 2>/dev/null | parse_commands)
+    fi
+
+    if [[ $found == false ]]; then
+      printf '%s\t%s\t%s\n' "$category" "gh $name" "$description"
+    fi
+  done < <(gh --help 2>/dev/null | parse_commands)
+}
+
+gh_version=$(gh --version 2>/dev/null | awk 'NR == 1 { print $3 }')
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/$PLUGIN_ID"
+cache_file="$cache_dir/index-${gh_version:-unknown}.json"
+
+if [[ $refresh == true || ! -s $cache_file ]]; then
+  mkdir -p "$cache_dir"
+  tmp_file=$(mktemp "$cache_dir/.index.XXXXXX")
+  trap 'rm -f "$tmp_file"' EXIT
+
+  build_index | jq -R -s '
+    split("\n")
+    | map(select(length > 0) | split("\t") | {category: .[0], command: .[1], description: (.[2] // "")})
+  ' >"$tmp_file"
+
+  if [[ $(jq length "$tmp_file") -gt 0 ]]; then
+    rm -f "$cache_dir"/index-*.json
+    mv "$tmp_file" "$cache_file"
+  else
+    echo '{"error":"could not read gh help"}'
+    exit 0
+  fi
+fi
+
+if [[ $print == true ]]; then
+  jq -r '.[] | "\(.category)\t\(.command)\t→ \(.description)"' "$cache_file" | column -t -s $'\t'
+else
+  cat "$cache_file"
+fi
