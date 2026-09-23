@@ -98,6 +98,7 @@ Item {
     else if (selectedIndex < 0) selectedIndex = 0
     cursorActive = displayModel.count > 0
 
+    pointerGate.reset()
     Qt.callLater(function() { root.revealSelected() })
   }
 
@@ -108,8 +109,17 @@ Item {
     else resultList.positionViewAtIndex(selectedIndex, ListView.Contain)
   }
 
+  // Hover only moves the selection after a real pointer move, so rows
+  // scrolling under a stationary pointer don't steal keyboard selection.
+  function selectFromPointer(index, item, mouse) {
+    if (!pointerGate.moved(item, mouse)) return
+    root.cursorActive = true
+    root.selectedIndex = index
+  }
+
   function moveTo(index) {
     if (displayModel.count === 0) return
+    pointerGate.reset()
     cursorActive = true
     selectedIndex = Math.max(0, Math.min(displayModel.count - 1, index))
     revealSelected()
@@ -165,6 +175,11 @@ Item {
   }
 
   ListModel { id: displayModel }
+
+  PointerMoveGate {
+    id: pointerGate
+    referenceItem: card
+  }
 
   Process {
     id: indexProc
@@ -383,10 +398,7 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onContainsMouseChanged: if (containsMouse) {
-                  root.cursorActive = true
-                  root.selectedIndex = parent.index
-                }
+                onPositionChanged: function(mouse) { root.selectFromPointer(parent.index, this, mouse) }
                 onClicked: root.activateIndex(parent.index)
               }
             }
