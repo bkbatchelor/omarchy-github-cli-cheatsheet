@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Build a categorized index of GitHub CLI commands from gh's own help output.
-# Categories follow the gh manual (https://cli.github.com/manual/gh), which
-# uses the same section headers `gh --help` prints.
+# Categories follow the gh manual's table of contents
+# (https://cli.github.com/manual/): one section per built-in top-level
+# command, alphabetical, with its subcommands underneath. User aliases and
+# installed extensions aren't in the manual, so they are left out.
 #
 # Usage: gh-cheatsheet-index [--refresh] [--print]
 #   --refresh  rebuild the cached index
@@ -43,42 +45,55 @@ parse_commands() {
   '
 }
 
-category_name() {
+is_manual_section() {
   case "$1" in
-    "CORE COMMANDS") echo "Core" ;;
-    "GITHUB ACTIONS COMMANDS") echo "GitHub Actions" ;;
-    "ALIAS COMMANDS") echo "Alias" ;;
-    "ADDITIONAL COMMANDS") echo "Additional" ;;
-    "EXTENSION COMMANDS") echo "Extension" ;;
-    *) echo "" ;;
+    "CORE COMMANDS"|"GITHUB ACTIONS COMMANDS"|"ADDITIONAL COMMANDS") return 0 ;;
+    *) return 1 ;;
   esac
 }
 
 build_index() {
-  local section name description category subsection subname subdescription found
+  local section name description subsection subname subdescription found
 
   while IFS=$'\t' read -r section name description; do
-    category=$(category_name "$section")
-    [[ -n $category ]] || continue
+    is_manual_section "$section" || continue
 
     found=false
 
-    if [[ $category != "Alias" ]]; then
-      while IFS=$'\t' read -r subsection subname subdescription; do
-        found=true
-        printf '%s\t%s\t%s\n' "$category" "gh $name $subname" "$subdescription"
-      done < <(gh "$name" --help 2>/dev/null | parse_commands)
-    fi
+    while IFS=$'\t' read -r subsection subname subdescription; do
+      found=true
+      printf '%s\t%s\t%s\n' "$name" "gh $name $subname" "$subdescription"
+    done < <(gh "$name" --help 2>/dev/null | parse_commands)
 
     if [[ $found == false ]]; then
-      printf '%s\t%s\t%s\n' "$category" "gh $name" "$description"
+      printf '%s\t%s\t%s\n' "$name" "gh $name" "$description"
     fi
-  done < <(gh --help 2>/dev/null | parse_commands)
+  done < <(gh --help 2>/dev/null | parse_commands) | LC_ALL=C sort -t $'\t' -k1,1 -k2,2
+}
+
+# Print each category's name, a horizontal rule, then its commands.
+print_index() {
+  local width
+  width=$(tput cols 2>/dev/null || echo 100)
+
+  jq -r '
+    (map(.command | length) | max) as $pad
+    | .[] | [.category, .command, .description, ($pad | tostring)] | @tsv
+  ' "$1" | awk -F '\t' -v width="$width" '
+    BEGIN { rule = sprintf("%*s", width, ""); gsub(/ /, "-", rule) }
+    $1 != current {
+      if (current != "") print ""
+      current = $1
+      print current
+      print rule
+    }
+    { printf "%-*s  %s\n", $4, $2, $3 }
+  '
 }
 
 gh_version=$(gh --version 2>/dev/null | awk 'NR == 1 { print $3 }')
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/$PLUGIN_ID"
-cache_file="$cache_dir/index-${gh_version:-unknown}.json"
+cache_file="$cache_dir/index-v2-${gh_version:-unknown}.json"
 
 if [[ $refresh == true || ! -s $cache_file ]]; then
   mkdir -p "$cache_dir"
@@ -100,7 +115,7 @@ if [[ $refresh == true || ! -s $cache_file ]]; then
 fi
 
 if [[ $print == true ]]; then
-  jq -r '.[] | "\(.category)\t\(.command)\t→ \(.description)"' "$cache_file" | column -t -s $'\t'
+  print_index "$cache_file"
 else
   cat "$cache_file"
 fi

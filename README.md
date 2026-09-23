@@ -1,6 +1,6 @@
 # GitHub CLI Cheatsheet for Omarchy
 
-A searchable pop-up of every [GitHub CLI](https://cli.github.com/) (`gh`) command, grouped by the categories in the [gh manual](https://cli.github.com/manual/gh): **Core**, **GitHub Actions**, **Alias**, and **Additional**. Pick a command and it is typed into the focused window, ready for you to add arguments. It never runs the command for you.
+A searchable pop-up of every [GitHub CLI](https://cli.github.com/) (`gh`) command, grouped the way the [gh manual](https://cli.github.com/manual/)'s table of contents is: one section per command, from `agent-task` to `workflow`, with its subcommands underneath. Pick a command and it is typed into the focused window, ready for you to add arguments. It never runs the command for you.
 
 It works like Omarchy's `SUPER + K` keybindings window and follows your Omarchy theme.
 

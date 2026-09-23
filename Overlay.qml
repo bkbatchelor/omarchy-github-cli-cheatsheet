@@ -335,12 +335,11 @@ Item {
                 anchors.leftMargin: Style.spacing.rowPaddingX
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: Style.spacing.sm
-                text: parent.section.toUpperCase()
+                text: parent.section
                 color: root.selectedText
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                font.letterSpacing: 1
               }
 
               Rectangle {
@@ -349,7 +348,7 @@ Item {
                 anchors.bottom: parent.bottom
                 height: 1
                 color: root.foreground
-                opacity: 0.12
+                opacity: 0.3
               }
             }
 
