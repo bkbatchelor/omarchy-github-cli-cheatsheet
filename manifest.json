@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.bkbatchelor.omarchy-github-cli-cheatsheet",
   "name": "GitHub CLI Cheatsheet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Brian Batchelor",
   "license": "MIT",
   "description": "Searchable, categorized GitHub CLI (gh) command picker that types the chosen command into the focused window.",
