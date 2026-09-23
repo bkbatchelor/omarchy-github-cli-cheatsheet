@@ -8,7 +8,7 @@ It works like Omarchy's `SUPER + K` keybindings window and follows your Omarchy 
 
 ## How it works
 
-- The command list is generated from your installed `gh` (`gh --help` and `gh <command> --help`), so it always matches your version, including your own aliases and extensions.
+- The command list is generated from your installed `gh` (`gh --help` and `gh <command> --help`), so it always matches your version. Your own aliases and installed extensions are left out, since the manual does not list them.
 - The list is cached in `~/.cache/io.github.bkbatchelor.omarchy-github-cli-cheatsheet/` and rebuilt automatically when `gh` is upgraded.
 - The chosen command is inserted with a trailing space (for example `gh pr create `) by pasting it with Shift+Insert. Enter is never pressed.
 
