@@ -42,7 +42,7 @@ omarchy-shell shell toggle io.github.bkbatchelor.omarchy-github-cli-cheatsheet '
 | `Backspace` / `Ctrl + U` | Delete a character or clear the search |
 | `Esc` | Clear the search, then close |
 
-To rebuild the list by hand (for example after adding a `gh` alias or extension):
+The list is rebuilt automatically when `gh` is upgraded. To rebuild it by hand:
 
 ```bash
 ~/.config/omarchy/plugins/io.github.bkbatchelor.omarchy-github-cli-cheatsheet/bin/gh-cheatsheet-index --refresh --print
